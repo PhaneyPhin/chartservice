@@ -1,0 +1,66 @@
+api.js
+
+Type
+Text
+Size
+2 KB (1,736 bytes)
+Storage used
+2 KB (1,736 bytes)
+Location
+routes
+Owner
+me
+Modified
+Jun 18, 2019 by me
+Opened
+9:22 AM by me
+Created
+Jun 18, 2019 with Google Drive Web
+Add a description
+Viewers can download
+var express = require('express');
+var router = express.Router();
+const mssql = require('mssql')
+var config = {
+  user: 'sa',
+  password: 'zxcv11',
+  server: '10.255.248.11\\MS2014',
+  database: 'DTCGPS_EVOgt'
+};
+console.log(config);
+mssql.connect(config, function (err) {
+  if(err) throw err;
+  console.log("connected");
+});
+
+
+/* GET users listing. */
+router.post('/getBlackbox_data', function (req, res, next) {
+  //res.send('respond with a resource');
+  console.log(req.body);
+  var { blackbox_id, start_date, end_date } = req.body;
+  start_date=new Date(parseInt(start_date)*1000).toISOString();
+  end_date=new Date(parseInt(end_date)*1000).toISOString();
+  
+  var sql = `
+  select s.R_TIME,(
+    case when s.TEMPERATURE_COL='R_ANALOG1' then s.R_ANALOG1 else s.R_ANALOG2
+  end) as R_ANALOG,s.TRUCK_NAME,s.TEMPERATURE_COL,s.TRUCK_LICENSE from (select R_TIME,R_ANALOG1 - (127) AS R_ANALOG1,R_ANALOG2 - (127) AS R_ANALOG2,TRUCK.TRUCK_NAME,TRUCK.TRUCK_LICENSE,
+  CASE WHEN TRUCK.TEMPERATURE_COL IS NULL THEN 'R_ANALOG1' ELSE TRUCK.TEMPERATURE_COL END AS TEMPERATURE_COL from z${blackbox_id}Data 
+  left join BLACKBOX on BLACKBOX.BLACKBOX_ID = '${blackbox_id}'
+  left join TRUCK on BLACKBOX.TRUCK_ID = TRUCK.TRUCK_ID) as s
+  where R_TIME >= '${start_date}' AND R_TIME <= '${end_date}' ORDER BY R_TIME ASC
+  `;
+  var request=new mssql.Request();
+  request.query(sql,(err,record)=>{
+    console.log(record);
+    var result=record.recordsets[0].map(item=>[new Date(item.R_TIME).getTime(),item.R_ANALOG])
+    res.send({TRUCK_NAME:record.recordsets[0][0].TRUCK_NAME,TRUCK_LICENSE:record.recordsets[0][0].TRUCK_LICENSE,data:result});
+  })
+});
+router.get('/chart', (req, res) => {
+  res.render("chart", req.query);
+})
+
+
+module.exports = router;

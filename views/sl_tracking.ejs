@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+        <link rel="stylesheet" href="https://kendo.cdn.telerik.com/2019.2.619/styles/kendo.common-material.min.css" />
+        <link rel="stylesheet" href="https://kendo.cdn.telerik.com/2019.2.619/styles/kendo.material.min.css" />
+        <link rel="stylesheet" href="https://kendo.cdn.telerik.com/2019.2.619/styles/kendo.material.mobile.min.css" />
+    
+        <script src="https://kendo.cdn.telerik.com/2019.2.619/js/jquery.min.js"></script>
+        <script src="https://kendo.cdn.telerik.com/2019.2.619/js/kendo.all.min.js"></script>
+        <script src="https://kendo.cdn.telerik.com/2019.2.619/js/jszip.min.js"></script>
+        <link href="https://fonts.googleapis.com/css?family=Sarabun&display=swap" rel="stylesheet">
+<style>
+    *{
+        font-family: 'Sarabun', sans-serif;
+        font-size:10pt;
+    }
+    html,
+    body
+    {
+        margin:0;
+        padding:0;
+        height:100%;
+    }
+    html
+    {
+    }
+
+    #grid {
+    height: 100%;
+    }
+    body{
+          
+          background:#fafaf5;
+      }
+      .img{
+       margin-top:20vh;
+      }
+    
+
+</style>
+  <meta charset="utf-8">
+  <title>Truck Data</title>
+</head>
+<body id ="body">
+   <div id="loading">
+        <center>
+            <img src="/images/loading.gif" class="img"></img>
+        </center>
+    </div>
+  <div id="outerWrapper">
+    <div id="grid"></div>
+  </div>
+  <script>
+$(window).resize(function() {
+    resizeWrapper();
+    resizeGrid();
+  });
+
+function resizeGrid() {
+    var gridElement = $("#grid"),
+        dataArea = gridElement.find(".k-grid-content"),
+        gridHeight = gridElement.innerHeight(),
+        otherElements = gridElement.children().not(".k-grid-content"),
+        otherElementsHeight = 0;
+    otherElements.each(function(){
+        otherElementsHeight += $(this).outerHeight();
+    });
+    dataArea.height(gridHeight - otherElementsHeight);
+}
+
+function resizeWrapper() {
+     $("#outerWrapper").height($('#body').innerHeight());
+    }
+
+  $(document).ready(function() {
+    $(window).trigger("resize");
+    $("#outerWrapper").hide();
+    $.ajax({
+        url:"/api/sl_tracking",
+        type:"GET",
+        success:function(result){
+            $("#outerWrapper").show();
+            $("#loading").hide();
+           
+            var data=result;
+            $("#grid").kendoGrid({
+            toolbar: ["excel"],
+            dataSource: {
+                data:data,
+                pageSize: 50
+            },     
+            sortable: true,
+            groupable: true,
+            filterable: true,
+            columnMenu: true,
+            reorderable: true,
+            resizable: true,
+            pageable: {
+                refresh: true,
+                pageSizes: [10, 20, 50,100, "all"],
+            },
+            dataBound: function() {
+                for (var i = 0; i < this.columns.length; i++) {
+                this.autoFitColumn(i);
+                }
+            },
+            columns: [
+            
+            { command: { text: "View Chart", click: showDetails }, title: " ", width: "180px" },
+            {
+                field: "TRUCK_NAME",
+                title: "TRUCK_NAME",
+                width:300
+            }, {
+                field: "STATION_NAME",
+                title: "STATION_NAME"
+            }, {
+                field: "Station_Type",
+                title: "Station_Type"
+            }, {
+                field: "PLAN_TIMEIN"
+            }, {
+                field: "ACTUAL_TIMEIN"
+            }, {
+                field: "Tracking"
+            }, {
+                field: "Result"
+            }, {
+                field: "Temp_IN"
+            }, {
+                field: "Temp_OUT"
+            }, {
+                field: "Distance"
+            }, {
+                field: "ETA"
+            }, {
+                field: "Temp_Alert"
+            }, {
+                field: "STATION_NOW"
+            }, {
+                field: "TAMBOL"
+            }, {
+                field: "AMPHUR"
+            }, {
+                field: "PROVINCE"
+            },{
+                field: "R_TIME"
+            }
+            ]
+            });  
+            function showDetails(e) {
+                var tr = $(e.target).closest("tr"); // get the current table row (tr)
+
+                // Show the row index in the HTML table
+                // alert("Row in the grid: " + tr.index());
+
+                // get the data bound to the current table row
+                var data = this.dataItem(tr);
+
+                // Show DataSource index
+                // alert("Datasource index: " + this.dataSource.indexOf(item));
+                var start_date=data.ACTUAL_TIMEIN;
+                if(start_date==""){
+                    start_date=data.PLAN_TIMEIN;
+                }
+                
+                var end_date=data.R_TIME;
+                start_date=new Date(start_date).getTime()/1000;
+                end_date=new Date(end_date).getTime()/1000;
+                PopupCenter(`/api/chart?blackbox_id=${data.BLACKBOX_ID}&start_date=${start_date}&end_date=${end_date}`,data.TRUCK_NAME,window.innerWidth-100,window.innerHeight);
+         }    
+        }
+    })  
+  });
+  function PopupCenter(url, title, w, h) {
+    // Fixes dual-screen position                         Most browsers      Firefox
+    var dualScreenLeft = window.screenLeft != undefined ? window.screenLeft : window.screenX;
+    var dualScreenTop = window.screenTop != undefined ? window.screenTop : window.screenY;
+
+    var width = window.innerWidth ? window.innerWidth : document.documentElement.clientWidth ? document.documentElement.clientWidth : screen.width;
+    var height = window.innerHeight ? window.innerHeight : document.documentElement.clientHeight ? document.documentElement.clientHeight : screen.height;
+
+    var systemZoom = width / window.screen.availWidth;
+    var left = (width - w) / 2 / systemZoom + dualScreenLeft
+    var top = (height - h) / 2 / systemZoom + dualScreenTop
+        var newWindow = window.open(url, title, 'scrollbars=yes, width=' + w / systemZoom + ', height=' + h / systemZoom + ', top=' + top + ', left=' + left);
+
+        // Puts focus on the newWindow
+        if (window.focus) newWindow.focus();
+}
+  </script>
+</body>
+</html>
